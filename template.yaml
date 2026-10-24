@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ironbear-agentcore - AgentCore Gateway using an existing Cognito user pool for JWT auth
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prd]
+  GatewayName:
+    Type: String
+    Description: AgentCore Gateway name (alphanumeric and hyphens, max 48 chars)
+  CognitoDiscoveryUrl:
+    Type: String
+    Description: OIDC discovery URL of the existing Cognito user pool (ends in /.well-known/openid-configuration)
+  CognitoClientId:
+    Type: String
+    Description: Existing Cognito app client ID allowed to call the gateway
+  PolicyEngineMode:
+    Type: String
+    AllowedValues: [LOG_ONLY, ENFORCE]
+    Default: LOG_ONLY
+    Description: Flip to ENFORCE once policies have been validated in LOG_ONLY
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    Description: Retention for the gateway CloudWatch log group (must be a value CloudWatch Logs supports)
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 30 # one second above API Gateway's 29s integration timeout
+    MemorySize: 256 # chosen deliberately as a starting point; tune per function
+    Tracing: Active
+
+Resources:
+  AgentCoreGatewayStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: infrastructure/agentcore-gateway.yaml
+      Parameters:
+        Environment: !Ref Environment
+        GatewayName: !Ref GatewayName
+        CognitoDiscoveryUrl: !Ref CognitoDiscoveryUrl
+        CognitoClientId: !Ref CognitoClientId
+        PolicyEngineMode: !Ref PolicyEngineMode
+
+  GatewayLogsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: infrastructure/gateway-logs.yaml
+      Parameters:
+        GatewayName: !Ref GatewayName
+        GatewayArn: !GetAtt AgentCoreGatewayStack.Outputs.GatewayArn
+        LogRetentionInDays: !Ref LogRetentionInDays
+
+Outputs:
+  # Exports are the contract with consumer stacks (other repos adding gateway targets).
+  # Renaming or removing one fails while any stack imports it.
+  GatewayUrl:
+    Description: MCP endpoint for the AgentCore Gateway
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayUrl
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-GatewayUrl
+  GatewayId:
+    Description: Value for GatewayIdentifier on AWS::BedrockAgentCore::GatewayTarget
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayId
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-GatewayId
+  GatewayArn:
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayArn
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-GatewayArn
+  GatewayRoleArn:
+    Description: Role the gateway uses to invoke targets; consumers grant it lambda:InvokeFunction on their own functions
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayRoleArn
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-GatewayRoleArn
+  PolicyEngineId:
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineId
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-PolicyEngineId
+  PolicyEngineArn:
+    Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineArn
+    Export:
+      Name: !Sub ironbear-agentcore-${Environment}-PolicyEngineArn
+  LogGroupArn:
+    Value: !GetAtt GatewayLogsStack.Outputs.LogGroupArn
