@@ -1,0 +1,19 @@
+version = 0.1
+
+[prd]
+[prd.deploy.parameters]
+stack_name = "ironbear-agentcore-prd"
+s3_prefix = "ironbear-agentcore-prd"
+s3_bucket = "sam-deployments-ironbear-us-east-1"
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+  "Environment=prd",
+  "GatewayName=ironbear-agentcore-gateway",
+  "CognitoDiscoveryUrl=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_PHVtw7Qca/.well-known/openid-configuration",
+  "CognitoClientId=4qd2g0afi0b04mqs9jiqlsolt4",
+  "PolicyEngineMode=LOG_ONLY",
+  "LogRetentionInDays=30",
+]
+tags = [
+  "BACKUP=ironbear-agentcore-prd",
+]

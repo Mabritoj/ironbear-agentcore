@@ -1,0 +1,19 @@
+{
+  "name": "ironbear-agentcore",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "sam validate --lint",
+    "build": "sam build",
+    "deploy:dev": "sam build && sam deploy --config-env dev",
+    "deploy:prd": "sam build && sam deploy --config-env prd",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "typescript": "^5.6.0"
+  }
+}

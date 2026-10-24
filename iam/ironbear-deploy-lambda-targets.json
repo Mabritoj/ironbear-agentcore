@@ -1,0 +1,45 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageIronbearFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:PublishVersion",
+        "lambda:CreateAlias",
+        "lambda:UpdateAlias",
+        "lambda:DeleteAlias",
+        "lambda:GetAlias",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy",
+        "lambda:ListTags",
+        "lambda:TagResource",
+        "lambda:UntagResource"
+      ],
+      "Resource": "arn:aws:lambda:us-east-1:591235220321:function:ironbear-*"
+    },
+    {
+      "Sid": "ManageIronbearLayers",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:PublishLayerVersion",
+        "lambda:GetLayerVersion",
+        "lambda:DeleteLayerVersion"
+      ],
+      "Resource": "arn:aws:lambda:us-east-1:591235220321:layer:ironbear-*"
+    },
+    {
+      "Sid": "ListLambdaLayers",
+      "Effect": "Allow",
+      "Action": "lambda:ListLayerVersions",
+      "Resource": "*"
+    }
+  ]
+}

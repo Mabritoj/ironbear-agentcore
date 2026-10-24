@@ -1,0 +1,8 @@
+{
+  "name": "agentcore-consumer",
+  "description": "Guidance for building services (Lambda, MCP server, OpenAPI, API Gateway targets) that plug into an AgentCore Gateway via its CloudFormation exports.",
+  "version": "0.1.0",
+  "author": {
+    "name": "IronBEAR"
+  }
+}
