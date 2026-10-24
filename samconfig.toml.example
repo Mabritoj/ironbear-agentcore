@@ -3,8 +3,8 @@ version = 0.1
 # Copy to samconfig.toml (gitignored) and fill in the placeholders.
 [prd]
 [prd.deploy.parameters]
-stack_name = "<stack-name>"
-s3_prefix = "<stack-name>"
+stack_name = "ironbear-agentcore-prd"
+s3_prefix = "ironbear-agentcore-prd"
 s3_bucket = "<deployment-bucket-name>"
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
 parameter_overrides = [
@@ -16,5 +16,5 @@ parameter_overrides = [
   "LogRetentionInDays=30",
 ]
 tags = [
-  "BACKUP=<stack-name>",
+  "BACKUP=ironbear-agentcore-prd",
 ]
