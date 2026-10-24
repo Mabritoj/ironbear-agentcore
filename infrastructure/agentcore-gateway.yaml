@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AgentCore Gateway (MCP) with Cognito JWT inbound auth, response streaming and a policy engine
+
+Parameters:
+  Environment:
+    Type: String
+  GatewayName:
+    Type: String
+  CognitoDiscoveryUrl:
+    Type: String
+  CognitoClientId:
+    Type: String
+  PolicyEngineMode:
+    Type: String
+    AllowedValues: [LOG_ONLY, ENFORCE]
+    Default: LOG_ONLY
+
+Resources:
+  # Cedar policies are added later as AWS::BedrockAgentCore::Policy resources
+  # pointing at this engine. While empty and in LOG_ONLY mode it only records
+  # what would have been allowed or denied.
+  PolicyEngine:
+    Type: AWS::BedrockAgentCore::PolicyEngine
+    Properties:
+      Name: !Sub ironbear_${Environment}_policy_engine # underscores only; hyphens are not allowed
+      Description: !Sub ironbear-agentcore ${Environment} gateway authorization policies
+
+  GatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ironbear-agentcore-${Environment}-gateway-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*
+      Policies:
+        - PolicyName: GatewayPolicyEngine
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetPolicyEngine
+                  - bedrock-agentcore:AuthorizeAction
+                  - bedrock-agentcore:PartiallyAuthorizeActions
+                Resource:
+                  - !GetAtt PolicyEngine.PolicyEngineArn
+                  - !Sub arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*
+        # Add a lambda:InvokeFunction statement scoped to each target Lambda ARN
+        # here when the first GatewayTarget is introduced.
+
+  Gateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Ref GatewayName
+      Description: !Sub ironbear-agentcore ${Environment} gateway
+      RoleArn: !GetAtt GatewayRole.Arn
+      ProtocolType: MCP
+      ProtocolConfiguration:
+        Mcp:
+          StreamingConfiguration:
+            EnableResponseStreaming: true
+      AuthorizerType: CUSTOM_JWT
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Ref CognitoDiscoveryUrl
+          AllowedClients:
+            - !Ref CognitoClientId
+      PolicyEngineConfiguration:
+        Arn: !GetAtt PolicyEngine.PolicyEngineArn
+        Mode: !Ref PolicyEngineMode
+
+Outputs:
+  GatewayUrl:
+    Value: !GetAtt Gateway.GatewayUrl
+  GatewayId:
+    Value: !GetAtt Gateway.GatewayIdentifier
+  GatewayArn:
+    Value: !GetAtt Gateway.GatewayArn
+  GatewayRoleArn:
+    Value: !GetAtt GatewayRole.Arn
+  PolicyEngineId:
+    Value: !GetAtt PolicyEngine.PolicyEngineId
+  PolicyEngineArn:
+    Value: !GetAtt PolicyEngine.PolicyEngineArn

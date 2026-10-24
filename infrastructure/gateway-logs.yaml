@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudWatch Logs group and vended log delivery for AgentCore Gateway application logs
+
+Parameters:
+  GatewayName:
+    Type: String
+  GatewayArn:
+    Type: String
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+
+Resources:
+  # Log groups used for vended log delivery must start with /aws/vendedlogs/.
+  # This matches the group AgentCore creates by default, except for the name
+  # suffix: the default uses the generated gateway ID, which is only known
+  # after the gateway exists, so the gateway name is used here instead.
+  GatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/bedrock-agentcore/gateway/APPLICATION_LOGS/${GatewayName}
+      RetentionInDays: !Ref LogRetentionInDays
+
+  GatewayLogDeliverySource:
+    Type: AWS::Logs::DeliverySource
+    Properties:
+      Name: !Sub ${GatewayName}-logs
+      ResourceArn: !Ref GatewayArn
+      LogType: APPLICATION_LOGS
+
+  GatewayLogDeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Properties:
+      Name: !Sub ${GatewayName}-logs-cwl
+      DeliveryDestinationType: CWL
+      DestinationResourceArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${GatewayLogGroup}
+      OutputFormat: json
+
+  GatewayLogDelivery:
+    Type: AWS::Logs::Delivery
+    Properties:
+      DeliverySourceName: !Ref GatewayLogDeliverySource
+      DeliveryDestinationArn: !GetAtt GatewayLogDeliveryDestination.Arn
+
+Outputs:
+  LogGroupArn:
+    Value: !GetAtt GatewayLogGroup.Arn
