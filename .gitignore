@@ -3,5 +3,4 @@ node_modules/
 samconfig.local.toml
 *.log
 .DS_Store
-plugin-staging/
 samconfig.toml
