@@ -3,9 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: ironbear-agentcore - AgentCore Gateway using an existing Cognito user pool for JWT auth
 
 Parameters:
-  Environment:
-    Type: String
-    AllowedValues: [dev, prd]
   GatewayName:
     Type: String
     Description: AgentCore Gateway name (alphanumeric and hyphens, max 48 chars)
@@ -38,7 +35,6 @@ Resources:
     Properties:
       TemplateURL: infrastructure/agentcore-gateway.yaml
       Parameters:
-        Environment: !Ref Environment
         GatewayName: !Ref GatewayName
         CognitoDiscoveryUrl: !Ref CognitoDiscoveryUrl
         CognitoClientId: !Ref CognitoClientId
@@ -60,28 +56,28 @@ Outputs:
     Description: MCP endpoint for the AgentCore Gateway
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayUrl
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-GatewayUrl
+      Name: ironbear-agentcore-GatewayUrl
   GatewayId:
     Description: Value for GatewayIdentifier on AWS::BedrockAgentCore::GatewayTarget
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayId
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-GatewayId
+      Name: ironbear-agentcore-GatewayId
   GatewayArn:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayArn
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-GatewayArn
+      Name: ironbear-agentcore-GatewayArn
   GatewayRoleArn:
     Description: Role the gateway uses to invoke targets; consumers grant it lambda:InvokeFunction on their own functions
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayRoleArn
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-GatewayRoleArn
+      Name: ironbear-agentcore-GatewayRoleArn
   PolicyEngineId:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineId
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-PolicyEngineId
+      Name: ironbear-agentcore-PolicyEngineId
   PolicyEngineArn:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineArn
     Export:
-      Name: !Sub ironbear-agentcore-${Environment}-PolicyEngineArn
+      Name: ironbear-agentcore-PolicyEngineArn
   LogGroupArn:
     Value: !GetAtt GatewayLogsStack.Outputs.LogGroupArn

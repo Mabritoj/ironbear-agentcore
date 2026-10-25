@@ -1,14 +1,13 @@
 version = 0.1
 
 # Copy to samconfig.toml (gitignored) and fill in the placeholders.
-[prd]
-[prd.deploy.parameters]
-stack_name = "ironbear-agentcore-prd"
-s3_prefix = "ironbear-agentcore-prd"
+[default]
+[default.deploy.parameters]
+stack_name = "ironbear-agentcore"
+s3_prefix = "ironbear-agentcore"
 s3_bucket = "<deployment-bucket-name>"
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
 parameter_overrides = [
-  "Environment=prd",
   "GatewayName=<gateway-name>",
   "CognitoDiscoveryUrl=https://cognito-idp.<region>.amazonaws.com/<user-pool-id>/.well-known/openid-configuration",
   "CognitoClientId=<cognito-app-client-id>",
@@ -16,5 +15,5 @@ parameter_overrides = [
   "LogRetentionInDays=30",
 ]
 tags = [
-  "BACKUP=ironbear-agentcore-prd",
+  "BACKUP=ironbear-agentcore",
 ]

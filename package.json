@@ -6,8 +6,7 @@
   "scripts": {
     "validate": "sam validate --lint",
     "build": "sam build",
-    "deploy:dev": "sam build && sam deploy --config-env dev",
-    "deploy:prd": "sam build && sam deploy --config-env prd",
+    "deploy": "sam build && sam deploy",
     "test": "jest"
   },
   "devDependencies": {
