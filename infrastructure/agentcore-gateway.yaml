@@ -2,8 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: AgentCore Gateway (MCP) with Cognito JWT inbound auth, response streaming and a policy engine
 
 Parameters:
-  Environment:
-    Type: String
   GatewayName:
     Type: String
   CognitoDiscoveryUrl:
@@ -22,13 +20,13 @@ Resources:
   PolicyEngine:
     Type: AWS::BedrockAgentCore::PolicyEngine
     Properties:
-      Name: !Sub ironbear_${Environment}_policy_engine # underscores only; hyphens are not allowed
-      Description: !Sub ironbear-agentcore ${Environment} gateway authorization policies
+      Name: ironbear_policy_engine # underscores only; hyphens are not allowed
+      Description: ironbear-agentcore gateway authorization policies
 
   GatewayRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub ironbear-agentcore-${Environment}-gateway-${AWS::Region}
+      RoleName: !Sub ironbear-agentcore-gateway-${AWS::Region}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -61,7 +59,7 @@ Resources:
     Type: AWS::BedrockAgentCore::Gateway
     Properties:
       Name: !Ref GatewayName
-      Description: !Sub ironbear-agentcore ${Environment} gateway
+      Description: ironbear-agentcore gateway
       RoleArn: !GetAtt GatewayRole.Arn
       ProtocolType: MCP
       ProtocolConfiguration:
