@@ -2,6 +2,7 @@
   "name": "ironbear-agentcore",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "validate": "sam validate --lint",
