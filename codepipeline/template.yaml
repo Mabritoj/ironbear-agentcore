@@ -1,0 +1,444 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CodePipeline and CodeBuild projects (verify, deploy) for the ironbear-agentcore gateway stack
+  (agentcore/template.yaml). The pipeline validates the SAM template, then deploys the stack and its
+  nested AgentCoreGatewayStack and GatewayLogsStack. Deploy with codepipeline/samconfig.toml
+  (see samconfig.toml.example)
+
+Parameters:
+  GitHubConnectionArn:
+    Type: String
+    Description: CodeConnections ARN for this repo's GitHub connection, status Available.
+  GitHubOwner:
+    Type: String
+  GitHubRepo:
+    Type: String
+    Default: ironbear-agentcore
+  ProjectShortName:
+    Type: String
+    Default: ironbear-agentcore
+    Description: >-
+      Short name for the project, used in pipeline/CodeBuild/role/bucket names.
+      Keep this under 30 characters: it is prefixed onto the artifact bucket name,
+      which is capped at 63 characters by S3.
+  StackName:
+    Type: String
+    Default: ironbear-agentcore
+    Description: >-
+      CloudFormation stack name of the app stack, matching stack_name in
+      agentcore/samconfig.toml. Deploy permissions are scoped to this exact stack and
+      its two nested stacks, never a prefix wildcard.
+  GatewayName:
+    Type: String
+    Description: GatewayName parameter of the app stack (alphanumeric and hyphens, max 48 chars).
+  CognitoDiscoveryUrl:
+    Type: String
+    Description: CognitoDiscoveryUrl parameter of the app stack (OIDC discovery URL of the existing user pool).
+  CognitoClientId:
+    Type: String
+    Description: CognitoClientId parameter of the app stack.
+  PolicyEngineMode:
+    Type: String
+    AllowedValues: [LOG_ONLY, ENFORCE]
+    Default: LOG_ONLY
+    Description: PolicyEngineMode parameter of the app stack.
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    Description: LogRetentionInDays parameter of the app stack.
+  GitHubBranch:
+    Type: String
+    Description: >-
+      Git branch to build from. For manual-only pipelines (production), this is the
+      branch used when you click Release change / start-pipeline-execution.
+  SourceDetectChanges:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: >-
+      When true, each push to GitHubBranch starts the pipeline. Set false for production
+      so deploys run only when you manually release (merge to main does not deploy).
+  SamArtifactsBucketName:
+    Type: String
+    Description: Existing SAM package bucket that sam deploy uploads the nested templates to.
+  CfnDeployRoleArn:
+    Type: String
+    Description: >-
+      ARN of the manually-created, out-of-band CloudFormation execution role (see
+      prereq-iam/README.md). Passed to sam deploy --role-arn so CodeBuildDeployRole
+      never needs the app stack's own deploy-time permissions directly.
+  EnableManualApproval:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  ManualApproval: !Equals [!Ref EnableManualApproval, "true"]
+
+Mappings:
+  BuildCompute:
+    Standard:
+      Type: BUILD_GENERAL1_MEDIUM
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectShortName}-pipeline-artifacts-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+            NoncurrentVersionExpirationInDays: 7
+
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub "/aws/codebuild/${ProjectShortName}"
+      RetentionInDays: 30
+
+  # Verify and the auto-approve gate. Logs and artifact bucket access only; no CloudFormation.
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectShortName}-codebuild"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: codebuild-logs-and-artifacts
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectShortName}*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+
+  CodeBuildDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectShortName}-codebuild-deploy"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: codebuild-deploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectShortName}*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${SamArtifactsBucketName}"
+                  - !Sub "arn:aws:s3:::${SamArtifactsBucketName}/*"
+              - Effect: Allow
+                Action:
+                  # The caller (this role) still drives the CloudFormation control plane
+                  # directly - these calls don't go through the execution role below.
+                  # The *resource-level* work CloudFormation does while provisioning
+                  # (IAM, AgentCore, CloudWatch Logs) runs under the out-of-band
+                  # CfnDeployRoleArn execution role instead, via `sam deploy --role-arn`,
+                  # never under this role directly.
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ValidateTemplate
+                Resource:
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${StackName}/*"
+                  # Nested stacks are named {parent}-{logicalId}-{random}. Listing the logical IDs
+                  # (rather than a bare ${StackName}-* prefix) keeps this role away from sibling
+                  # stacks that share the prefix, such as this pipeline's own stack.
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${StackName}-AgentCoreGatewayStack-*/*"
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${StackName}-GatewayLogsStack-*/*"
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Ref CfnDeployRoleArn
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectShortName}-pipeline"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: pipeline-orchestration
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt VerifyProject.Arn
+                  - !GetAtt DeployProject.Arn
+                  - !GetAtt AutoApproveProject.Arn
+
+  VerifyProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectShortName}-verify"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      TimeoutInMinutes: 30
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !FindInMap [BuildCompute, Standard, Type]
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: false
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: codepipeline/infrastructure/buildspec/verify.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+
+  DeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectShortName}-deploy"
+      ServiceRole: !GetAtt CodeBuildDeployRole.Arn
+      TimeoutInMinutes: 30
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !FindInMap [BuildCompute, Standard, Type]
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: STACK_NAME
+            Value: !Ref StackName
+          - Name: SAM_BUCKET
+            Value: !Ref SamArtifactsBucketName
+          - Name: CFN_DEPLOY_ROLE_ARN
+            Value: !Ref CfnDeployRoleArn
+          - Name: GATEWAY_NAME
+            Value: !Ref GatewayName
+          - Name: COGNITO_DISCOVERY_URL
+            Value: !Ref CognitoDiscoveryUrl
+          - Name: COGNITO_CLIENT_ID
+            Value: !Ref CognitoClientId
+          - Name: POLICY_ENGINE_MODE
+            Value: !Ref PolicyEngineMode
+          - Name: LOG_RETENTION_IN_DAYS
+            Value: !Ref LogRetentionInDays
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: codepipeline/infrastructure/buildspec/deploy.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+
+  AutoApproveProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectShortName}-auto-approve"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      TimeoutInMinutes: 5
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: false
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            build:
+              commands:
+                - echo "Auto-approve gate (EnableManualApproval=false)"
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ProjectShortName}"
+      RoleArn: !GetAtt PipelineRole.Arn
+      PipelineType: V2
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub_Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub "${GitHubOwner}/${GitHubRepo}"
+                BranchName: !Ref GitHubBranch
+                DetectChanges: !Ref SourceDetectChanges
+                OutputArtifactFormat: CODE_ZIP
+              OutputArtifacts:
+                - Name: SourceOutput
+
+        - Name: Verify
+          Actions:
+            - Name: Verify
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName: !Ref VerifyProject
+              InputArtifacts:
+                - Name: SourceOutput
+
+        - Name: Approve
+          Actions:
+            - !If
+              - ManualApproval
+              - Name: Manual_Approval
+                ActionTypeId:
+                  Category: Approval
+                  Owner: AWS
+                  Provider: Manual
+                  Version: "1"
+                Configuration:
+                  CustomData: !Sub "Approve deployment of ${StackName}"
+              - Name: Auto_Approve
+                ActionTypeId:
+                  Category: Build
+                  Owner: AWS
+                  Provider: CodeBuild
+                  Version: "1"
+                Configuration:
+                  ProjectName: !Ref AutoApproveProject
+                InputArtifacts:
+                  - Name: SourceOutput
+
+        - Name: Deploy
+          Actions:
+            - Name: Deploy_Gateway
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName: !Ref DeployProject
+              InputArtifacts:
+                - Name: SourceOutput
+
+Outputs:
+  PipelineName:
+    Value: !Ref Pipeline
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket
+  CodeBuildRoleArn:
+    Value: !GetAtt CodeBuildRole.Arn
+  CodeBuildDeployRoleArn:
+    Value: !GetAtt CodeBuildDeployRole.Arn
+  VerifyProjectName:
+    Value: !Ref VerifyProject
+  DeployProjectName:
+    Value: !Ref DeployProject

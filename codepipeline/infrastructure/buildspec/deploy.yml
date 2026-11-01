@@ -1,0 +1,36 @@
+version: 0.2
+
+# Deploys agentcore/template.yaml (the gateway stack and its nested stacks). agentcore/samconfig.toml
+# is gitignored, so every sam deploy setting is passed explicitly from the CodeBuild project's
+# environment variables, which come from the pipeline stack's parameters.
+
+env:
+  shell: bash
+  variables:
+    SAM_CLI_TELEMETRY: "0"
+
+phases:
+  build:
+    commands:
+      - |
+        set -euo pipefail
+        cd "$CODEBUILD_SRC_DIR/agentcore"
+        REGION="${AWS_REGION:-$AWS_DEFAULT_REGION}"
+
+        sam build
+        sam deploy \
+          --stack-name "$STACK_NAME" \
+          --s3-bucket "$SAM_BUCKET" \
+          --s3-prefix "$STACK_NAME" \
+          --region "$REGION" \
+          --role-arn "$CFN_DEPLOY_ROLE_ARN" \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+          --tags "BACKUP=$STACK_NAME" \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+            "GatewayName=$GATEWAY_NAME" \
+            "CognitoDiscoveryUrl=$COGNITO_DISCOVERY_URL" \
+            "CognitoClientId=$COGNITO_CLIENT_ID" \
+            "PolicyEngineMode=$POLICY_ENGINE_MODE" \
+            "LogRetentionInDays=$LOG_RETENTION_IN_DAYS"

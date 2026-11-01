@@ -1,0 +1,39 @@
+# Copy this file to samconfig.toml and fill in your own AWS account's values.
+# samconfig.toml is gitignored - it holds real account IDs and role ARNs.
+#
+# Deploys codepipeline/template.yaml: the pipeline that validates and deploys agentcore/ (the
+# AgentCore Gateway stack) with SAM.
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "ironbear-agentcore-pipeline"
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+s3_bucket = "<YOUR_SAM_DEPLOYMENTS_BUCKET>"
+s3_prefix = "ironbear-agentcore-pipeline"
+region = "us-east-1"
+role_arn = "<cfn-execution-role-arn>"
+parameter_overrides = [
+  "GitHubConnectionArn=<CODECONNECTIONS_ARN>",
+  "GitHubOwner=<GITHUB_OWNER>",
+  "GitHubRepo=ironbear-agentcore",
+  "ProjectShortName=ironbear-agentcore",
+  "StackName=ironbear-agentcore",
+  "GatewayName=<gateway-name>",
+  "CognitoDiscoveryUrl=https://cognito-idp.<region>.amazonaws.com/<user-pool-id>/.well-known/openid-configuration",
+  "CognitoClientId=<cognito-app-client-id>",
+  "PolicyEngineMode=LOG_ONLY",
+  "LogRetentionInDays=30",
+  "GitHubBranch=main",
+  "SourceDetectChanges=true",
+  "SamArtifactsBucketName=<YOUR_SAM_DEPLOYMENTS_BUCKET>",
+  "CfnDeployRoleArn=<CFN_DEPLOY_ROLE_ARN>",
+  "EnableManualApproval=true"
+]
+tags = "BACKUP=\"ironbear-agentcore-pipeline\""

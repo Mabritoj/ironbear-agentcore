@@ -7,6 +7,7 @@ stack_name = "ironbear-agentcore"
 s3_prefix = "ironbear-agentcore"
 s3_bucket = "<deployment-bucket-name>"
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+role_arn = "<cfn-execution-role-arn>"
 parameter_overrides = [
   "GatewayName=<gateway-name>",
   "CognitoDiscoveryUrl=https://cognito-idp.<region>.amazonaws.com/<user-pool-id>/.well-known/openid-configuration",

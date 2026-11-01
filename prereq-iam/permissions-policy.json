@@ -1,0 +1,270 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AgentCoreCloudFormationStackOps",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:GetTemplateSummary",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:DescribeStackResource",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:GetTemplate",
+        "cloudformation:ValidateTemplate"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:<REGION>:<ACCOUNT_ID>:stack/<STACK_NAME>/*",
+        "arn:aws:cloudformation:<REGION>:<ACCOUNT_ID>:stack/<STACK_NAME>-AgentCoreGatewayStack-*/*",
+        "arn:aws:cloudformation:<REGION>:<ACCOUNT_ID>:stack/<STACK_NAME>-GatewayLogsStack-*/*"
+      ]
+    },
+    {
+      "Sid": "AgentCoreSamArtifactsBucketRead",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::<SAM_ARTIFACTS_BUCKET>/<STACK_NAME>/*"
+    },
+    {
+      "Sid": "AgentCoreCloudFormationSamTransform",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet"
+      ],
+      "Resource": "arn:aws:cloudformation:<REGION>:aws:transform/Serverless-2016-10-31"
+    },
+    {
+      "Sid": "AgentCorePassRoleToNestedStacks",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/<CFN_DEPLOY_ROLE_NAME>"
+    },
+    {
+      "Sid": "AgentCoreGatewayRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/ironbear-agentcore-gateway-<REGION>"
+    },
+    {
+      "Sid": "AgentCorePassGatewayRoleToAgentCore",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/ironbear-agentcore-gateway-<REGION>",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "AgentCoreAgentCore",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:*",
+      "Resource": "arn:aws:bedrock-agentcore:<REGION>:<ACCOUNT_ID>:*"
+    },
+    {
+      "Sid": "AgentCoreGatewayLogGroup",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/vendedlogs/bedrock-agentcore/gateway/APPLICATION_LOGS/*"
+    },
+    {
+      "Sid": "AgentCoreGatewayLogDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "logs:PutDeliverySource",
+        "logs:DeleteDeliverySource",
+        "logs:GetDeliverySource",
+        "logs:PutDeliveryDestination",
+        "logs:DeleteDeliveryDestination",
+        "logs:GetDeliveryDestination",
+        "logs:CreateDelivery",
+        "logs:DeleteDelivery",
+        "logs:GetDelivery",
+        "logs:UpdateDeliveryConfiguration",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:delivery-source:*",
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:delivery-destination:*",
+        "arn:aws:logs:<REGION>:<ACCOUNT_ID>:delivery:*"
+      ]
+    },
+    {
+      "Sid": "AgentCoreLogsDescribeAndVendedDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeResourcePolicies",
+        "logs:PutResourcePolicy",
+        "logs:AllowVendedLogDeliveryForResource",
+        "logs:DescribeDeliveries",
+        "logs:DescribeDeliverySources",
+        "logs:DescribeDeliveryDestinations"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PipelineSamArtifactsBucketRead",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::<SAM_ARTIFACTS_BUCKET>/<PIPELINE_STACK_NAME>/*"
+    },
+    {
+      "Sid": "PipelineArtifactBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:GetEncryptionConfiguration",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutLifecycleConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:PutBucketTagging",
+        "s3:GetBucketTagging"
+      ],
+      "Resource": "arn:aws:s3:::<PROJECT_SHORT_NAME>-pipeline-artifacts-<ACCOUNT_ID>"
+    },
+    {
+      "Sid": "PipelineRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-codebuild",
+        "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-codebuild-deploy",
+        "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-pipeline"
+      ]
+    },
+    {
+      "Sid": "PipelinePassCodeBuildRoles",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-codebuild",
+        "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-codebuild-deploy"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "codebuild.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PipelinePassPipelineRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/<PROJECT_SHORT_NAME>-pipeline",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "codepipeline.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PipelineCodeBuildProjects",
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:CreateProject",
+        "codebuild:UpdateProject",
+        "codebuild:DeleteProject",
+        "codebuild:BatchGetProjects"
+      ],
+      "Resource": "arn:aws:codebuild:<REGION>:<ACCOUNT_ID>:project/<PROJECT_SHORT_NAME>-*"
+    },
+    {
+      "Sid": "PipelineCodePipeline",
+      "Effect": "Allow",
+      "Action": [
+        "codepipeline:CreatePipeline",
+        "codepipeline:UpdatePipeline",
+        "codepipeline:DeletePipeline",
+        "codepipeline:GetPipeline",
+        "codepipeline:TagResource",
+        "codepipeline:UntagResource",
+        "codepipeline:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:codepipeline:<REGION>:<ACCOUNT_ID>:<PROJECT_SHORT_NAME>",
+        "arn:aws:codepipeline:<REGION>:<ACCOUNT_ID>:<PROJECT_SHORT_NAME>/*"
+      ]
+    },
+    {
+      "Sid": "PipelinePassGitHubConnection",
+      "Effect": "Allow",
+      "Action": [
+        "codeconnections:PassConnection",
+        "codeconnections:GetConnection",
+        "codestar-connections:PassConnection",
+        "codestar-connections:GetConnection"
+      ],
+      "Resource": "<GITHUB_CONNECTION_ARN>"
+    },
+    {
+      "Sid": "PipelineCodeBuildLogGroup",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:logs:<REGION>:<ACCOUNT_ID>:log-group:/aws/codebuild/<PROJECT_SHORT_NAME>*"
+    }
+  ]
+}
