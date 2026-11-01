@@ -35,11 +35,11 @@ This stack exports:
 
 | Export | Use |
 |---|---|
-| `ironbear-agentcore-GatewayId` | `GatewayIdentifier` on the target |
-| `ironbear-agentcore-GatewayArn` | scoping conditions |
-| `ironbear-agentcore-GatewayRoleArn` | principal in the Lambda permission |
-| `ironbear-agentcore-GatewayUrl` | clients / smoke tests |
-| `ironbear-agentcore-PolicyEngineId` / `-PolicyEngineArn` | attaching Cedar policies |
+| `ironbear-agentcore-gatewayid` | `GatewayIdentifier` on the target |
+| `ironbear-agentcore-gatewayarn` | scoping conditions |
+| `ironbear-agentcore-gatewayrolearn` | principal in the Lambda permission |
+| `ironbear-agentcore-gatewayurl` | clients / smoke tests |
+| `ironbear-agentcore-policyengineid` / `-policyenginearn` | attaching Cedar policies |
 
 The gateway role has no blanket invoke rights. Each consumer grants it access on its own function:
 
@@ -52,7 +52,7 @@ Resources:
       FunctionName: !Ref MyToolFunction
       Action: lambda:InvokeFunction
       Principal:
-        Fn::ImportValue: ironbear-agentcore-GatewayRoleArn
+        Fn::ImportValue: ironbear-agentcore-gatewayrolearn
 
   MyToolTarget:
     Type: AWS::BedrockAgentCore::GatewayTarget
@@ -60,7 +60,7 @@ Resources:
     Properties:
       Name: my-tool
       GatewayIdentifier:
-        Fn::ImportValue: ironbear-agentcore-GatewayId
+        Fn::ImportValue: ironbear-agentcore-gatewayid
       # TargetConfiguration (Lambda ARN + tool schema) and
       # CredentialProviderConfigurations (gateway IAM role) go here.
 ```

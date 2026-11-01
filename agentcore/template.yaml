@@ -56,28 +56,28 @@ Outputs:
     Description: MCP endpoint for the AgentCore Gateway
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayUrl
     Export:
-      Name: ironbear-agentcore-GatewayUrl
+      Name: ironbear-agentcore-gatewayurl
   GatewayId:
     Description: Value for GatewayIdentifier on AWS::BedrockAgentCore::GatewayTarget
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayId
     Export:
-      Name: ironbear-agentcore-GatewayId
+      Name: ironbear-agentcore-gatewayid
   GatewayArn:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayArn
     Export:
-      Name: ironbear-agentcore-GatewayArn
+      Name: ironbear-agentcore-gatewayarn
   GatewayRoleArn:
     Description: Role the gateway uses to invoke targets; consumers grant it lambda:InvokeFunction on their own functions
     Value: !GetAtt AgentCoreGatewayStack.Outputs.GatewayRoleArn
     Export:
-      Name: ironbear-agentcore-GatewayRoleArn
+      Name: ironbear-agentcore-gatewayrolearn
   PolicyEngineId:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineId
     Export:
-      Name: ironbear-agentcore-PolicyEngineId
+      Name: ironbear-agentcore-policyengineid
   PolicyEngineArn:
     Value: !GetAtt AgentCoreGatewayStack.Outputs.PolicyEngineArn
     Export:
-      Name: ironbear-agentcore-PolicyEngineArn
+      Name: ironbear-agentcore-policyenginearn
   LogGroupArn:
     Value: !GetAtt GatewayLogsStack.Outputs.LogGroupArn

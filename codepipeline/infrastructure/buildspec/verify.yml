@@ -1,0 +1,15 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  install:
+    runtime-versions:
+      python: latest
+    commands:
+      - pip install cfn-lint
+  build:
+    commands:
+      - cd "$CODEBUILD_SRC_DIR/agentcore"
+      - sam validate --lint --region "${AWS_REGION:-$AWS_DEFAULT_REGION}"
